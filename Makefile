@@ -29,8 +29,13 @@ clean:
 qemu:
 	qemu-system-x86_64 -bios $(BIOS) -drive file=$(BOOT_DRIVE),format=raw
 
-# needs dosfstools and mtools
 img:
+ifeq (, $(shell which mkfs.vfat))
+	$(error "Can't find mkfs.vfat, consider doing sudo apt install dosfstools")
+endif
+ifeq (, $(shell which mcopy))
+	$(error "Can't find mcopy, consider doing sudo apt install mtools")
+endif
 	dd if=/dev/zero of=$(BOOT_DRIVE) bs=1M count=1
 	mkfs.vfat $(BOOT_DRIVE)
 	mmd -i $(BOOT_DRIVE) ::EFI
