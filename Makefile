@@ -1,27 +1,27 @@
-NASM = nasm
-NASMFLAGS = -f win64
-STANDALONE_FLAGS = -Dfill_sector
+ASM = nasm
+ASMFLAGS = -f win64
 
 LINKER = clang
 LLD-FLAGS = --target=x86_64-unknown-windows -nostdlib -Wl,-entry:_start -Wl,-subsystem:efi_application -fuse-ld=lld
 
-SRC_DIR = .
+SRC_DIR = src
+OBJ_DIR = obj
+EFI_DIR = efi
+INC_DIR = inc
+
 SRC = $(wildcard $(SRC_DIR)/*.asm)
 
-OBJ_DIR = .
-OBJ = $(SRC:.asm=.obj)
+OBJ = $(SRC:$(SRC_DIR)/%.asm=$(OBJ_DIR)/%.obj)
 
-EFI = uefi.efi
-BIOS = bios.bin
+EFI = $(EFI_DIR)/uefi.efi
+BIOS = $(wildcard $(INC_DIR)/*.bios)
 BOOT_DRIVE = uefi.img
 
-.PHONY: clean qemu all standalone vhd
+.PHONY: clean qemu all img
 
 all: $(OBJ)
 	$(LINKER) $(LLD-FLAGS) -o $(EFI) $<
-
-standalone: NASMFLAGS += $(STANDALONE_FLAGS)
-standalone: $(OBJ)
+	make img
 
 clean:
 	rm -f $(OBJ) $(BOOT_DRIVE) $(EFI)
@@ -30,12 +30,12 @@ qemu:
 	qemu-system-x86_64 -bios $(BIOS) -drive file=$(BOOT_DRIVE),format=raw
 
 # needs dosfstools and mtools
-vhd:
+img:
 	dd if=/dev/zero of=$(BOOT_DRIVE) bs=1M count=1
 	mkfs.vfat $(BOOT_DRIVE)
 	mmd -i $(BOOT_DRIVE) ::EFI
 	mmd -i $(BOOT_DRIVE) ::EFI/BOOT
-	mcopy -i $(BOOT_DRIVE) uefi.efi ::EFI/BOOT/BOOTX64.EFI
+	mcopy -i $(BOOT_DRIVE) $(EFI) ::EFI/BOOT/BOOTX64.EFI
 
-%.obj: %.asm
-	$(NASM) $(NASMFLAGS) -o $@ $<
+$(OBJ_DIR)/%.obj: $(SRC_DIR)/%.asm
+	$(ASM) $(ASMFLAGS) -o $@ $<
