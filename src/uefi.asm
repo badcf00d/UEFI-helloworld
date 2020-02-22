@@ -12,83 +12,30 @@
 ; OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
 ; PERFORMANCE OF THIS SOFTWARE.
 
-; generate 64-bit code
-bits 64
+bits 64         ; generate 64-bit code
+default rel     ; default to RIP-relative addressing
 
-; contains the code that will run
-section .text
+section .text   ; contains the code that will run
 
-; allows the linker to see this symbol
-global _start
 
-; see http://www.uefi.org/sites/default/files/resources/UEFI Spec 2_7_A Sept 6.pdf#G8.1001729
-struc EFI_TABLE_HEADER
-    .Signature    RESQ 1
-    .Revision     RESD 1
-    .HeaderSize   RESD 1
-    .CRC32        RESD 1
-    .Reserved     RESD 1
-endstruc
-
-; see http://www.uefi.org/sites/default/files/resources/UEFI Spec 2_7_A Sept 6.pdf#G8.1001773
-struc EFI_SYSTEM_TABLE
-    .Hdr                  RESB EFI_TABLE_HEADER_size
-    .FirmwareVendor       RESQ 1
-    .FirmwareRevision     RESD 1
-    .ConsoleInHandle      RESQ 1
-    .ConIn                RESQ 1
-    .ConsoleOutHandle     RESQ 1
-    .ConOut               RESQ 1
-    .StandardErrorHandle  RESQ 1
-    .StdErr               RESQ 1
-    .RuntimeServices      RESQ 1
-    .BootServices         RESQ 1
-    .NumberOfTableEntries RESQ 1
-    .ConfigurationTable   RESQ 1
-endstruc
-
-; see http://www.uefi.org/sites/default/files/resources/UEFI Spec 2_7_A Sept 6.pdf#G16.1016807
-struc EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    .Reset             RESQ 1
-    .OutputString      RESQ 1
-    .TestString	       RESQ 1
-    .QueryMode	       RESQ 1
-    .SetMode	       RESQ 1
-    .SetAttribute      RESQ 1
-    .ClearScreen       RESQ 1
-    .SetCursorPosition RESQ 1
-    .EnableCursor      RESQ 1
-    .Mode              RESQ 1
-endstruc
-
+global _start   ; allows the linker to see this symbol
+%include "src/include/typedefs.asm" 
 
 _start:
-    ; reserve space for 4 arguments
-    sub rsp, 4 * 8
+    mov [hndImageHandle], rcx   ; The UEFI Firmware puts the EFI_HANDLE in argument 1, rcx
+    mov [ptrSystemTable], rdx   ; The UEFI Firmware puts the EFI_SYSTEM_TABLE in argument 2, rdx
 
-    ; rdx points to the EFI_SYSTEM_TABLE structure
-    ; which is the 2nd argument passed to us by the UEFI firmware
-    ; adding 64 causes rcx to point to EFI_SYSTEM_TABLE.ConOut
-    mov rcx, [rdx + 64]
-
-    ; load the address of our string into rdx
-    lea rdx, [rel strHello]
-
-    ; EFI_SYSTEM_TABLE.ConOut points to EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
-    ; call OutputString on the value in rdx
-    call [rcx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.OutputString]
-    
-    ; loop forever so we can see the string before the UEFI application exits
-    jmp $
+    mov rcx, [rdx + EFI_SYSTEM_TABLE.ConOut]    ; ConOut is a EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL for the default console
+    lea rdx, [strHello]                         ; pointer to our string
+    call [rcx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.OutputString]   ; call the OutputString function with our arguments
+    jmp $                                       ; loop forever
 
 codesize equ $ - $$
 
-; contains nothing - but it is required by UEFI
-section .reloc
+section .data ; contains the data that will be displayed
 
-; contains the data that will be displayed
-section .data
-    ; this must be a Unicode string
-    strHello db __utf16__ `Hello World !\0`
+    strHello db __utf16__ `Hello World\0`   ; this must be a Unicode string
+    hndImageHandle          dq   0          ; stores the EFI_HANDLE
+    ptrSystemTable          dq   0          ; stores the EFI_SYSTEM_TABLE
 
 datasize equ $ - $$
