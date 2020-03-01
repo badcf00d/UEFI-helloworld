@@ -20,11 +20,11 @@ _start:
     ;   Argument 2 (rdx): a pointer to the EFI_SYSTEM_TABLE
 
     mov rcx, [rdx + EFI_SYSTEM_TABLE.ConOut]                    ; ConOut is a EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL for the default console
-    mov rdx, strHello                                           ; moves the address of our string into rdx
+    mov rdx, strHelloWorld                                      ; moves the address of our string into rdx
     call [rcx + EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.OutputString]   ; call the OutputString function with our arguments: rcx and rdx
     
     jmp $                                                       ; loop forever
 
 
 section .data   ; contains the program data
-    strHello db __utf16__ `Hello World\0`
+    strHelloWorld db __utf16__ `Hello World\0`
